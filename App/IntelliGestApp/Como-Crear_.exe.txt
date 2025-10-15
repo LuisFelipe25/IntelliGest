@@ -1,0 +1,30 @@
+# Instalar Python 3.12 si hace falta
+winget install -e --id Python.Python.3.12
+
+# Proyecto
+cd "C:\ruta\al\proyecto"
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -U pip wheel
+pip install -r requirements.txt
+
+# Ejecutar
+python app.py --provider CPU --camera 0
+
+(Opcional) Empaquetar en Windows (OneFile)
+
+pip install pyinstaller
+pyinstaller --noconfirm --clean `
+  --name IntelliGestApp `
+  --onefile `
+  --windowed `
+  --collect-all PySide6 `
+  --collect-all shiboken6 `
+  --collect-all onnxruntime `
+  --hidden-import onnxruntime `
+  --hidden-import onnxruntime.capi._pybind_state `
+  app.py
+
+Copy-Item .\modelo.onnx .\dist\
+Copy-Item .\labels.txt .\dist\
+.\dist\YARVIS.exe --provider CPU

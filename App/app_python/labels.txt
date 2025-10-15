@@ -1,0 +1,8 @@
+arms_crossed
+arms_down
+arms_side
+arms_up
+left_arm_side
+left_arm_up
+right_arm_side
+right_arm_up

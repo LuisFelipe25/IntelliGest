@@ -1,0 +1,18 @@
+# ====== YARVIS: runtime + build ======
+# Probado con Python 3.12.x
+
+# --- Runtime ---
+PySide6==6.6.3
+shiboken6==6.6.3
+onnxruntime==1.18.1         # CPU por defecto (estable en Win/Linux)
+opencv-python==4.10.0.84
+numpy>=1.26,<3
+
+# --- Alternativas de ONNX Runtime (elige SOLO una) ---
+# onnxruntime-directml==1.18.1   # Windows + GPU via DirectML
+# onnxruntime-gpu==1.18.1        # NVIDIA CUDA (requiere drivers/CUDA compatibles)
+
+# --- Build / empaquetado ---
+pyinstaller==6.16.0
+wheel>=0.43
+setuptools>=68
