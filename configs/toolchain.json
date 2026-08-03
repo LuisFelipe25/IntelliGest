@@ -1,0 +1,6 @@
+{
+  "yolov5_path": "third_party/yolov5",
+  "source_repository": "YARVIS",
+  "source_commit": "156c8ce8a9dbfcb64f1c6852eb2094ce7d3735d5",
+  "upstream_base_commit": "f5ebc52c7e5130230bb8444e321244dd42c424a7"
+}

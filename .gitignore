@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# External data, local configuration and generated outputs
+configs/paths.local.json
+data/local/
+data/legacy/
+artifacts/local/
+models/legacy/
+runs/
+*.pt
+*.pth
+*.onnx
+*.engine
+*.torchscript
+reports/generated/*
+!reports/generated/.gitkeep
+
+# Local tooling
+.env
+*.log

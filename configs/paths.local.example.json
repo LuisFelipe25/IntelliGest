@@ -1,0 +1,15 @@
+{
+  "yolov5_path": "third_party/yolov5",
+  "datasets": {
+    "ciima_4": "data/legacy/CIIMA_Visio_AI/datasets/arm_poses_cls",
+    "intelligest_8": "data/legacy/IntelliGest/datasets/arm_poses_cls",
+    "yarvis_4": "data/legacy/YARVIS/datasets/arm_poses_cls",
+    "visio_8_legacy": null
+  },
+  "models": {
+    "ciima_4": "models/legacy/CIIMA_Visio_AI/App/app_python/modelo.onnx",
+    "intelligest_8": null,
+    "yarvis_4": "models/legacy/YARVIS/runs/train-cls/exp/weights/best.onnx",
+    "visio_8_legacy": "models/legacy/Visio_AI/best.onnx"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "intelligest_8",
+  "description": "Taxonomía de ocho poses encontrada en el dataset completo de IntelliGest.",
+  "status": "requires_resplit",
+  "taxonomy": "intelligest_8",
+  "classes": ["arms_crossed", "arms_down", "arms_side", "arms_up", "left_arm_side", "left_arm_up", "right_arm_side", "right_arm_up"],
+  "source_repositories": ["IntelliGest"],
+  "dataset_path": "data/legacy/IntelliGest/datasets/arm_poses_cls"
+}

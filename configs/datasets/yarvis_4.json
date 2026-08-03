@@ -1,0 +1,9 @@
+{
+  "id": "yarvis_4",
+  "description": "Taxonomía histórica de cuatro clases de YARVIS.",
+  "status": "legacy_leakage",
+  "taxonomy": "yarvis_4",
+  "classes": ["arms_down", "both_arms_up", "left_arm_out", "right_arm_out"],
+  "source_repositories": ["YARVIS"],
+  "dataset_path": "data/legacy/YARVIS/datasets/arm_poses_cls"
+}
