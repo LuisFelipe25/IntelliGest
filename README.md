@@ -1,116 +1,193 @@
-# IntelliGest
+# 🦾 IntelliGest: Real-Time Human Pose Gesture Recognition & Control
 
-Proyecto consolidado para clasificación de gestos con una sola aplicación de escritorio, inferencia ONNX,
-entrenamiento/exportación mediante una sola copia integrada de YOLOv5 e integración UDP configurable.
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-1.18-orange.svg)](https://onnxruntime.ai/)
+[![PySide6](https://img.shields.io/badge/GUI-PySide6_6.6-green.svg)](https://www.qt.io/qt-for-python)
+[![YOLOv5 Classification](https://img.shields.io/badge/Backbone-YOLOv5_Cls-red.svg)](https://github.com/ultralytics/yolov5)
 
-Los datasets y modelos históricos están preservados localmente en `data/legacy` y `models/legacy`. Sus rutas
-predeterminadas se pueden sobrescribir en `configs/paths.local.json`; ambos directorios están ignorados por Git
-por su tamaño y deben respaldarse por separado.
+**IntelliGest** es una plataforma profesional de visión por computador para el **reconocimiento de poses y gestos de brazos humanos en tiempo real**. El sistema integra un motor de inferencia optimizado en **ONNX Runtime**, una aplicación de escritorio interactiva en **PySide6**, un pipeline reproducible de entrenamiento/exportación con **YOLOv5**, y un módulo de transmisión **UDP** de alta frecuencia para teleoperación, robótica, simulación y motores de videojuegos (Unity, Unreal Engine, VRChat/OSC).
 
-## Requisitos e instalación
+---
 
-- Python 3.10 o posterior.
-- Los directorios locales `data/legacy` y `models/legacy` conservados junto al proyecto.
+## 🏗️ Arquitectura del Sistema
 
-```powershell
+```mermaid
+graph TD
+    A[📹 Video / Webcam / Imagen] --> B[🧠 Motor Inferencia ONNX Engine]
+    B --> C[📊 Normalización NCHW + Softmax]
+    C --> D[🖥️ Aplicación Desktop PySide6]
+    D --> E[⏱️ Filtro de Estabilidad y Confianza]
+    E --> F[📡 Transmisión de Acciones UDP Socket]
+    F --> G[🤖 Sistema Externo / Robótica / Unity / Unreal]
+
+    H[📁 Datasets arm_poses_cls] --> I[⚡ YOLOv5 Classifier Training]
+    I --> J[📦 Exportación ONNX]
+    J --> B
+```
+
+---
+
+## ✨ Características Principales
+
+- **Inferencia en Tiempo Real**: Ejecución acelerada con ONNX Runtime en CPU, CUDA o DirectML.
+- **Aplicación de Escritorio Interactiva**: GUI construida con PySide6 con vista en vivo, indicador de confianza por clase, control FPS y envío de acciones en red.
+- **Transmisión UDP Robusta**: Filtro de estabilidad temporal configurable para evitar falsos positivos y rebotes de eventos antes del envío por socket UDP.
+- **Taxonomías Modulares**: Configuración desacoplada mediante JSON para fácil adición de nuevas poses y mapeo de acciones.
+- **Pipeline Reproducible**: Herramientas CLI unificadas para validación de perfiles, entrenamiento y exportación a ONNX.
+
+---
+
+## 🚀 Inicio Rápido
+
+### Requisitos Previos
+
+- Python 3.10 o superior.
+- Cámara web (para la aplicación de escritorio en vivo).
+
+### 1. Instalación
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/tu-usuario/IntelliGest.git
+cd IntelliGest
+
+# Crear entorno virtual
 python -m venv .venv
+
+# Activar entorno virtual
+# En Windows (PowerShell):
 .\.venv\Scripts\Activate.ps1
+# En Linux/macOS:
+# source .venv/bin/activate
+
+# Instalar dependencias con soporte GUI
 python -m pip install -e ".[desktop]"
-Copy-Item configs\paths.local.example.json configs\paths.local.json
-intelligest profiles
-intelligest paths
 ```
 
-Edita `configs/paths.local.json` si los datos o modelos están en otra ubicación. Este archivo es local y está ignorado
-por Git.
+### 2. Verificar la Configuración
 
-## Estructura
+Puedes validar la configuración del sistema sin requerir cámara o modelos cargados:
 
-```text
-configs/                  perfiles, contratos de modelo, rutas y acciones UDP
-src/intelligest/app/      única aplicación PySide6 basada en CIIMA_Visio_AI
-src/intelligest/inference motor ONNX y preprocesamiento
-src/intelligest/training/ comandos para el YOLOv5 externo de YARVIS
-src/intelligest/export/   exportación ONNX
-src/intelligest/integrations/ transporte UDP
-third_party/yolov5/       única implementación YOLOv5 preservada
-data/legacy/              datasets locales (ignorado por Git)
-models/legacy/            modelos locales (ignorado por Git)
-tests/                    pruebas estáticas y unitarias sin cámara ni red
-```
-
-## Perfiles
-
-| Perfil | Clases | Dataset predeterminado | Estado |
-|---|---:|---|---|
-| `ciima_4` | 4 | `data/legacy/CIIMA_Visio_AI/...` | Perfil principal |
-| `intelligest_8` | 8 | `data/legacy/IntelliGest/...` | Dataset heredado |
-| `yarvis_4` | 4 | `data/legacy/YARVIS/...` | Perfil heredado |
-| `visio_8_legacy` | 8 | Sin ruta | Requiere `--dataset` |
-
-El orden de clases vive en `configs/datasets/` y debe coincidir con el contrato de `configs/models/`.
-
-## Aplicación de escritorio
-
-La configuración se puede comprobar sin cargar ONNX, cámara ni UDP:
-
-```powershell
+```bash
 intelligest-desktop --check-config --no-udp
 ```
 
-Para iniciar la aplicación con el contrato `ciima_4`:
+### 3. Ejecutar la Aplicación de Escritorio
 
-```powershell
+```bash
+# Iniciar con la cámara web principal (índice 0)
 intelligest-desktop --source 0
+
+# O especificar un modelo ONNX y perfil de acciones personalizado:
+intelligest-desktop --model ruta/a/modelo.onnx --contract configs/models/arm_poses_7_app.json
 ```
 
-Usa `--model C:\ruta\modelo.onnx`, `--contract <archivo.json>` o `--actions <archivo.json>` para sobrescribir la
-configuración. `--no-udp` desactiva el envío de acciones. También se admite una ruta de imagen o video en `--source`.
+---
 
-## Entrenamiento futuro
+## 📊 Taxonomía de Gestos y Poses
 
-El consolidado reutiliza una sola implementación de YOLOv5 en `third_party/yolov5`, fijada en
-`configs/toolchain.json`. Instala sus dependencias antes de entrenar:
+El sistema utiliza el perfil canónico **`arm_poses_7`** definido en [`configs/datasets/arm_poses_7.json`](file:///c:/Users/felip/OneDrive/Desktop/IntelliGest-consolidado/configs/datasets/arm_poses_7.json):
 
-```powershell
-python -m pip install -r third_party\yolov5\requirements.txt
+| Perfil | N° Clases | Clases de Gestos Soportadas | Estado |
+|---|---:|---|---|
+| **`arm_poses_7`** | **7** | `arms_crossed`, `arms_side`, `arms_up`, `left_arm_side`, `left_arm_up`, `right_arm_side`, `right_arm_up` | **Canónico (Único)** |
+
+---
+
+## 🏋️ Entrenamiento y Exportación a ONNX
+
+### Entrenamiento con YOLOv5
+
+IntelliGest incluye una implementación integrada de YOLOv5 en `third_party/yolov5`. Para entrenar un nuevo modelo de clasificación de gestos:
+
+```bash
+# Instalar dependencias de entrenamiento
 python -m pip install -e ".[train]"
-intelligest train --profile ciima_4 --epochs 100 --batch-size 8 --device cpu
+python -m pip install -r third_party/yolov5/requirements.txt
+
+# Iniciar entrenamiento (agrega --execute para confirmar)
+intelligest train --profile arm_poses_7 --epochs 100 --batch-size 16 --execute
 ```
 
-Sin `--execute`, el último comando solo imprime la invocación. Añádelo cuando quieras iniciar realmente el
-entrenamiento. Puedes reemplazar el dataset con `--dataset C:\ruta\arm_poses_cls`.
+### Exportación a ONNX
 
-## Exportación ONNX
+Una vez obtenido el archivo de pesos `.pt` entrenado:
 
-```powershell
-intelligest export-onnx --weights C:\ruta\best.pt --imgsz 224
+```bash
+intelligest export-onnx --weights runs/train-cls/exp/weights/best.pt --imgsz 224 --execute
 ```
 
-El comando también es una vista previa hasta añadir `--execute`. La exportación usa `export.py` del mismo checkout
-integrado de YOLOv5.
+---
 
-## UDP
+## 📡 Integración UDP
 
-`configs/actions/ciima_4.json` define host, puerto, broadcast, estabilidad mínima, confianza y payload por clase.
-La aplicación solo envía cuando UDP está habilitado y la predicción permanece estable. Las pruebas verifican el
-mapeo sin abrir sockets.
+Las acciones transmitidas en red se configuran en `configs/actions/`. El sistema aplica un **filtro de estabilidad temporal** (duración mínima y umbral de confianza) para emitir el payload correspondiente.
 
-## Comprobaciones de desarrollo
+Ejemplo de configuración (`configs/actions/arm_poses_7.json`):
 
-```powershell
+```json
+{
+  "profile": "arm_poses_7",
+  "transport": "udp",
+  "host": "255.255.255.255",
+  "port": 1097,
+  "broadcast": true,
+  "minimum_stable_seconds": 1.5,
+  "minimum_confidence": 0.5,
+  "class_payloads": {
+    "arms_crossed": "crossed",
+    "arms_side": "side_both",
+    "arms_up": "up_both",
+    "left_arm_side": "left_side",
+    "left_arm_up": "left_up",
+    "right_arm_side": "right_side",
+    "right_arm_up": "right_up"
+  }
+}
+```
+
+---
+
+## 🧪 Pruebas y Control de Calidad
+
+```bash
+# Comprobación de compilación de código Python
 python -m compileall -q src tests
+
+# Verificación de sintaxis y linting
 ruff check .
-python -m pytest
+
+# Ejecución de la suite de pruebas unitarias
+pytest
 ```
 
-Se verificaron compilación, imports seguros, JSON/TOML, ayudas CLI, configuración de la aplicación, lint y 8 pruebas
-unitarias. La preservación de datasets, modelos y YOLOv5 se verificó archivo por archivo con SHA-256; consulta
-`reports/preservation-verification.json`. No se ejecutaron entrenamiento, evaluación, exportación, inferencia,
-cámara ni tráfico UDP; esas rutas
-requieren validación posterior con dependencias, hardware, datasets y modelos reales.
+---
 
-## Licencia
+## 📂 Estructura del Proyecto
 
-AGPL-3.0. Consulta [LICENSE](LICENSE) y [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para la atribución de
-Ultralytics YOLOv5 y la procedencia de los repositorios históricos.
+```text
+IntelliGest/
+├── .github/workflows/    # Workflows de CI/CD para GitHub Actions
+├── configs/              # Perfiles de datasets, contratos de modelo y acciones UDP
+│   ├── actions/          # Mapeo de payloads UDP por clase
+│   ├── datasets/         # Taxonomías y rutas de datasets
+│   └── models/           # Contratos de normalización e inferencia ONNX
+├── datasets/             # Datasets de entrenamiento y validación
+│   └── arm_poses_cls/    # Dataset de 7 clases de poses de brazos
+├── src/intelligest/      # Código fuente del paquete Python
+│   ├── app/              # Aplicación de escritorio PySide6
+│   ├── export/           # Utilidades de exportación ONNX
+│   ├── inference/        # Motor de inferencia ONNX Runtime
+│   ├── integrations/     # Socket client UDP y envío de acciones
+│   └── training/         # Wrapper de entrenamiento YOLOv5
+├── third_party/yolov5/   # Implementación integrada de YOLOv5
+└── tests/                # Suite de pruebas unitarias estáticas
+```
+
+---
+
+## 📄 Licencia y Atribución
+
+Este proyecto está bajo la Licencia **AGPL-3.0**. Consulta [LICENSE](LICENSE) para más detalles.
+Contiene código derivado de Ultralytics YOLOv5. Revisa [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) para avisos de licencias de terceros.

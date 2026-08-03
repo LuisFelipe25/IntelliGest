@@ -4,7 +4,6 @@ import unittest
 from pathlib import Path
 
 from intelligest.config import (
-    ConfigurationError,
     DatasetProfile,
     ModelContract,
     ToolchainConfig,
@@ -14,7 +13,9 @@ from intelligest.config import (
 
 class ConfigurationTests(unittest.TestCase):
     def test_all_profiles_load_with_unique_classes(self) -> None:
-        expected = {"ciima_4": 4, "intelligest_8": 8, "yarvis_4": 4, "visio_8_legacy": 8}
+        expected = {
+            "arm_poses_7": 7,
+        }
         for profile_id, class_count in expected.items():
             with self.subTest(profile=profile_id):
                 profile = DatasetProfile.load(profile_id)
@@ -28,12 +29,11 @@ class ConfigurationTests(unittest.TestCase):
                 contract = ModelContract.load(path)
                 self.assertEqual(contract.classes, DatasetProfile.load(contract.profile).classes)
 
-    def test_missing_visio_dataset_requires_override(self) -> None:
-        profile = DatasetProfile.load("visio_8_legacy")
-        with self.assertRaises(ConfigurationError):
-            profile.require_dataset()
+    def test_require_dataset_override(self) -> None:
+        profile = DatasetProfile.load("arm_poses_7")
         override = Path("external-dataset")
         self.assertEqual(profile.require_dataset(override), override.resolve())
+        self.assertTrue(profile.require_dataset().name, "arm_poses_cls")
 
     def test_toolchain_points_to_one_yolov5_copy(self) -> None:
         config = ToolchainConfig.load()

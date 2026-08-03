@@ -1,7 +1,5 @@
-# Datasets externos
+# Datasets
 
-Este repositorio no contiene ni copia datasets. Los perfiles de `configs/datasets/` apuntan a las ubicaciones
-actuales dentro de los cinco repositorios locales. Si se mueven esas carpetas, crea `configs/paths.local.json` a
-partir del archivo de ejemplo y actualiza únicamente las rutas locales.
+Este directorio y el directorio principal `datasets/` contienen los conjuntos de datos del proyecto para entrenamiento, validación y prueba (`arm_poses_cls`).
 
-El código de entrenamiento recibe también `--dataset`, que prevalece sobre la ruta del perfil.
+El comando de entrenamiento de `intelligest` utiliza por defecto la ruta configurada en `configs/datasets/arm_poses_7.json` o la ruta especificada mediante el argumento `--dataset`.

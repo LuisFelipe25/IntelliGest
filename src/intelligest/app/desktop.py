@@ -14,8 +14,8 @@ from intelligest.integrations.udp import UDPActionConfig, send_action
 def build_parser() -> argparse.ArgumentParser:
     root = project_root()
     parser = argparse.ArgumentParser(description="IntelliGest desktop and headless inference")
-    parser.add_argument("--contract", type=Path, default=root / "configs/models/ciima_4_app.json")
-    parser.add_argument("--actions", type=Path, default=root / "configs/actions/ciima_4.json")
+    parser.add_argument("--contract", type=Path, default=root / "configs/models/arm_poses_7_app.json")
+    parser.add_argument("--actions", type=Path, default=root / "configs/actions/arm_poses_7.json")
     parser.add_argument("--model", type=Path, help="Override the external model path")
     parser.add_argument("--provider", choices=["CPU", "CUDA", "DirectML"], default="CPU")
     parser.add_argument("--source", default="0", help="Camera index, image or video path")

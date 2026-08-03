@@ -1,9 +1,0 @@
-{
-  "id": "ciima_4",
-  "description": "Perfil funcional de cuatro poses laterales y elevadas de CIIMA.",
-  "status": "canonical",
-  "taxonomy": "ciima_4",
-  "classes": ["left_arm_side", "left_arm_up", "right_arm_side", "right_arm_up"],
-  "source_repositories": ["CIIMA_Visio_AI", "IntelliGest"],
-  "dataset_path": "data/legacy/CIIMA_Visio_AI/datasets/arm_poses_cls"
-}

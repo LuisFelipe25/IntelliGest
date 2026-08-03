@@ -29,7 +29,7 @@ def require_yolov5(root: Path | None = None) -> Path:
         ).strip()
         if actual != config.source_commit:
             raise RuntimeError(
-                f"El checkout YOLOv5/YARVIS debe estar en {config.source_commit}; se encontró {actual}"
+                f"El checkout YOLOv5 debe estar en {config.source_commit}; se encontró {actual}"
             )
     return config.yolov5_path
 

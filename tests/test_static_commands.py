@@ -10,7 +10,7 @@ from intelligest.training.yolov5 import build_train_command
 
 class StaticCommandTests(unittest.TestCase):
     def test_train_command_uses_single_external_checkout(self) -> None:
-        profile = DatasetProfile.load("ciima_4")
+        profile = DatasetProfile.load("arm_poses_7")
         command = build_train_command(
             profile,
             profile.require_dataset(),

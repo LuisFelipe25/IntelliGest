@@ -1,7 +1,5 @@
-# Modelos externos
+# Modelos y Artefactos
 
-Este repositorio no contiene pesos `.pt` ni modelos `.onnx`. Los contratos de `configs/models/` describen el orden
-de clases y apuntan a los binarios que continúan en sus repositorios locales.
+Este directorio está destinado a almacenar artefactos generados como ejecuciones de entrenamiento (`runs/`) y binarios exportados (`.pt`, `.onnx`).
 
-La aplicación acepta `--contract` y el entrenamiento/exportación aceptan rutas explícitas. Si cambian las
-ubicaciones, usa `configs/paths.local.json` o modifica un contrato local sin incorporar el binario a Git.
+Los binarios pesados están ignorados por Git (`.gitignore`). La aplicación de escritorio acepta la ruta del modelo mediante el argumento `--model` o utiliza el contrato definido en `configs/models/arm_poses_7_app.json`.

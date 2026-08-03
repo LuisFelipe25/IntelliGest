@@ -1,0 +1,18 @@
+{
+  "profile": "arm_poses_7",
+  "transport": "udp",
+  "host": "255.255.255.255",
+  "port": 1097,
+  "broadcast": true,
+  "minimum_stable_seconds": 1.5,
+  "minimum_confidence": 0.5,
+  "class_payloads": {
+    "arms_crossed": "crossed",
+    "arms_side": "side_both",
+    "arms_up": "up_both",
+    "left_arm_side": "left_side",
+    "left_arm_up": "left_up",
+    "right_arm_side": "right_side",
+    "right_arm_up": "right_up"
+  }
+}

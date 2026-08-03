@@ -1,0 +1,16 @@
+{
+  "id": "arm_poses_7",
+  "description": "Perfil canónico de 7 gestos de brazos del dataset arm_poses_cls.",
+  "status": "canonical",
+  "taxonomy": "arm_poses_7",
+  "classes": [
+    "arms_crossed",
+    "arms_side",
+    "arms_up",
+    "left_arm_side",
+    "left_arm_up",
+    "right_arm_side",
+    "right_arm_up"
+  ],
+  "dataset_path": "datasets/arm_poses_cls"
+}
