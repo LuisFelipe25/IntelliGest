@@ -87,7 +87,7 @@ intelligest-desktop --model ruta/a/modelo.onnx --contract configs/models/arm_pos
 
 ## 📊 Taxonomía de Gestos y Poses
 
-El sistema utiliza el perfil canónico **`arm_poses_7`** definido en [`configs/datasets/arm_poses_7.json`](file:///c:/Users/felip/OneDrive/Desktop/IntelliGest-consolidado/configs/datasets/arm_poses_7.json):
+El sistema utiliza el perfil canónico **`arm_poses_7`** definido en [`configs/datasets/arm_poses_7.json`](configs/datasets/arm_poses_7.json):
 
 | Perfil | N° Clases | Clases de Gestos Soportadas | Estado |
 |---|---:|---|---|
