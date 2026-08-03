@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +12,7 @@ class Prediction:
     class_name: str
     confidence: float
     probabilities: tuple[float, ...]
+    infer_ms: float = 0.0
 
 
 class ONNXEngine:
@@ -38,9 +40,28 @@ class ONNXEngine:
         self.input = self.session.get_inputs()[0]
         self.output = self.session.get_outputs()[0]
         output_shape = list(self.output.shape)
-        if len(output_shape) != 2 or output_shape[-1] != len(contract.classes):
+        if (
+            output_shape
+            and output_shape[-1] is not None
+            and isinstance(output_shape[-1], int)
+            and output_shape[-1] > 0
+        ):
+            output_classes = output_shape[-1]
+        else:
+            import numpy as np
+
+            h, w = self._image_size()
+            dummy = (
+                np.zeros((1, 3, h, w), dtype=np.float32)
+                if self.contract.layout == "NCHW"
+                else np.zeros((1, h, w, 3), dtype=np.float32)
+            )
+            raw = self.session.run([self.output.name], {self.input.name: dummy})[0]
+            output_classes = raw.reshape(1, -1).shape[-1]
+
+        if output_classes != len(contract.classes):
             raise ValueError(
-                f"Salida ONNX {output_shape} incompatible con {len(contract.classes)} clases"
+                f"Salida ONNX ({output_classes} clases) incompatible con {len(contract.classes)} clases del contrato"
             )
 
     def preprocess_bgr(self, frame):
@@ -69,7 +90,11 @@ class ONNXEngine:
         import numpy as np
 
         tensor = self.preprocess_bgr(frame)
-        values = self.session.run([self.output.name], {self.input.name: tensor})[0].reshape(1, -1)
+        start = time.perf_counter()
+        raw_output = self.session.run([self.output.name], {self.input.name: tensor})[0]
+        infer_ms = (time.perf_counter() - start) * 1000.0
+
+        values = raw_output.reshape(1, -1)
         shifted = values - np.max(values, axis=1, keepdims=True)
         probabilities = (np.exp(shifted) / np.exp(shifted).sum(axis=1, keepdims=True))[0]
         index = int(np.argmax(probabilities))
@@ -77,6 +102,7 @@ class ONNXEngine:
             class_name=self.contract.classes[index],
             confidence=float(probabilities[index]),
             probabilities=tuple(float(item) for item in probabilities),
+            infer_ms=infer_ms,
         )
 
     def predict_image(self, path: Path) -> Prediction:
@@ -103,5 +129,6 @@ class ONNXEngine:
             "output_shape": list(self.output.shape),
             "class": prediction.class_name,
             "confidence": prediction.confidence,
+            "infer_ms": prediction.infer_ms,
             "probability_sum": sum(prediction.probabilities),
         }

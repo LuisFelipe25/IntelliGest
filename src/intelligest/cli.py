@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from intelligest.config import DatasetProfile, ToolchainConfig, project_root
+from intelligest.config import DatasetProfile, ModelContract, ToolchainConfig, project_root
 from intelligest.export.onnx import build_export_command
 from intelligest.training.yolov5 import (
     build_evaluate_command,
@@ -48,6 +48,19 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--weights", type=Path, required=True)
     export.add_argument("--imgsz", type=int, default=224)
     export.add_argument("--execute", action="store_true")
+
+    inspect = commands.add_parser("inspect-onnx", help="Inspect ONNX model input/output metadata and class count")
+    inspect.add_argument("--model", type=Path, required=True, help="ONNX model path")
+    inspect.add_argument("--expected-classes", type=int, help="Expected number of output classes")
+
+    eval_onnx = commands.add_parser("evaluate-onnx", help="Run offline ONNX dataset evaluation and plot confusion matrix")
+    eval_onnx.add_argument("--model", type=Path, help="Override model file path")
+    eval_onnx.add_argument("--contract", type=Path, help="Model contract JSON path")
+    eval_onnx.add_argument("--profile", default="arm_poses_7", help="Dataset profile (e.g. arm_poses_7)")
+    eval_onnx.add_argument("--dataset", type=Path, help="Test dataset directory (defaults to test/ inside profile dataset path)")
+    eval_onnx.add_argument("--eval-out", type=Path, help="Output file for confusion matrix PNG")
+    eval_onnx.add_argument("--provider", choices=["CPU", "CUDA", "DirectML"], default="CPU")
+
     return parser
 
 
@@ -112,6 +125,39 @@ def main(argv: list[str] | None = None) -> int:
         if args.execute and not args.weights.is_file():
             raise FileNotFoundError(f"No existen los pesos: {args.weights}")
         return run(build_export_command(args.weights, args.imgsz), args.execute)
+    if args.command == "inspect-onnx":
+        from intelligest.inspection import inspect_onnx_model
+
+        result = inspect_onnx_model(args.model, args.expected_classes)
+        _json(result.to_dict())
+        return 0
+    if args.command == "evaluate-onnx":
+        from intelligest.evaluation import evaluate_dataset
+        from intelligest.inference.engine import ONNXEngine
+
+        contract_path = (
+            args.contract
+            if args.contract
+            else (root / "configs" / "models" / f"{args.profile}_app.json")
+        )
+        contract = ModelContract.load(contract_path)
+        engine = ONNXEngine(contract, provider=args.provider, model_path=args.model)
+
+        if args.dataset:
+            test_dir = args.dataset
+        else:
+            profile = DatasetProfile.load(contract.profile)
+            ds_path = profile.require_dataset()
+            test_dir = ds_path / "test" if (ds_path / "test").is_dir() else ds_path
+
+        def progress(done: int, total: int) -> None:
+            if done == total or done % 200 == 0:
+                print(f"Evaluando: {done}/{total}")
+
+        eval_res = evaluate_dataset(engine, test_dir, output_image_path=args.eval_out, on_progress=progress)
+        _json(eval_res.to_dict())
+        return 0
+
     return 2
 
 

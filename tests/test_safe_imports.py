@@ -11,6 +11,8 @@ class SafeImportTests(unittest.TestCase):
             "intelligest.inference.engine",
             "intelligest.training.yolov5",
             "intelligest.export.onnx",
+            "intelligest.evaluation",
+            "intelligest.inspection",
         ):
             with self.subTest(module=module):
                 self.assertIsNotNone(importlib.import_module(module))

@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 import time
+from collections import deque
 from pathlib import Path
 
 from intelligest.config import ModelContract, project_root
@@ -19,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", type=Path, help="Override the external model path")
     parser.add_argument("--provider", choices=["CPU", "CUDA", "DirectML"], default="CPU")
     parser.add_argument("--source", default="0", help="Camera index, image or video path")
+    parser.add_argument("--threshold", type=float, help="Override minimum confidence decision threshold")
     parser.add_argument("--headless", action="store_true", help="Run one image inference without PySide6")
     parser.add_argument(
         "--check-config",
@@ -26,6 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate configuration without loading a model",
     )
     parser.add_argument("--no-udp", action="store_true", help="Disable network actions")
+    parser.add_argument("--eval", action="store_true", help="Run offline dataset evaluation and exit")
+    parser.add_argument("--test-dir", type=Path, help="Directory for offline evaluation")
     return parser
 
 
@@ -40,6 +44,7 @@ def _headless(engine: ONNXEngine, source: str) -> int:
                 "class": prediction.class_name,
                 "confidence": prediction.confidence,
                 "probabilities": dict(zip(engine.contract.classes, prediction.probabilities, strict=True)),
+                "infer_ms": prediction.infer_ms,
             },
             ensure_ascii=False,
             indent=2,
@@ -48,19 +53,40 @@ def _headless(engine: ONNXEngine, source: str) -> int:
     return 0
 
 
-def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_udp: bool) -> int:
+def _run_eval(engine: ONNXEngine, test_dir: Path | None) -> int:
+    from intelligest.config import DatasetProfile
+    from intelligest.evaluation import evaluate_dataset
+
+    if test_dir is None:
+        profile = DatasetProfile.load(engine.contract.profile)
+        ds_path = profile.require_dataset()
+        test_dir = ds_path / "test" if (ds_path / "test").is_dir() else ds_path
+
+    print(f"Evaluando modelo {engine.contract.id} en dataset: {test_dir}")
+
+    def progress(done: int, total: int) -> None:
+        if done == total or done % 200 == 0:
+            print(f"Evaluando: {done}/{total}")
+
+    results = evaluate_dataset(engine, test_dir, on_progress=progress)
+    print(json.dumps(results.to_dict(), ensure_ascii=False, indent=2))
+    return 0
+
+
+def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_udp: bool, default_threshold: float | None = None) -> int:
     try:
         import cv2
         from PySide6.QtCore import Qt, QThread, QTimer, Signal
         from PySide6.QtGui import QImage, QPixmap
         from PySide6.QtWidgets import (
             QApplication,
+            QDoubleSpinBox,
             QHBoxLayout,
             QLabel,
             QMessageBox,
             QProgressBar,
             QPushButton,
-            QSlider,
+            QSpinBox,
             QVBoxLayout,
             QWidget,
         )
@@ -72,12 +98,13 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
         prediction_ready = Signal(object, float)
         failed = Signal(str)
 
-        def __init__(self):
+        def __init__(self, current_source: str):
             super().__init__()
+            self.current_source = current_source
             self.running = False
 
         def run(self):
-            capture_source = int(source) if source.isdigit() else source
+            capture_source = int(self.current_source) if self.current_source.isdigit() else self.current_source
             if isinstance(capture_source, str) and Path(capture_source).suffix.lower() in {
                 ".bmp",
                 ".jpeg",
@@ -87,11 +114,12 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
             }:
                 frame = cv2.imread(capture_source)
                 if frame is None:
-                    self.failed.emit(f"No se pudo leer la imagen: {source}")
+                    self.failed.emit(f"No se pudo leer la imagen: {self.current_source}")
                     return
                 self.frame_ready.emit(frame)
                 self.prediction_ready.emit(engine.predict_bgr(frame), 0.0)
                 return
+
             backend = (
                 cv2.CAP_DSHOW
                 if sys.platform.startswith("win") and isinstance(capture_source, int)
@@ -99,10 +127,11 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
             )
             capture = cv2.VideoCapture(capture_source, backend)
             if not capture.isOpened():
-                self.failed.emit(f"No se pudo abrir la fuente: {source}")
+                self.failed.emit(f"No se pudo abrir la fuente: {self.current_source}")
                 return
             self.running = True
             previous = time.monotonic()
+            fps_window = deque(maxlen=30)
             try:
                 while self.running:
                     ok, frame = capture.read()
@@ -112,10 +141,12 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
                         continue
                     prediction = engine.predict_bgr(frame)
                     now = time.monotonic()
-                    fps = 1.0 / max(now - previous, 1e-6)
+                    dt = max(now - previous, 1e-6)
+                    fps_window.append(1.0 / dt)
                     previous = now
+                    avg_fps = float(sum(fps_window) / len(fps_window))
                     self.frame_ready.emit(frame)
-                    self.prediction_ready.emit(prediction, fps)
+                    self.prediction_ready.emit(prediction, avg_fps)
             except Exception as exc:
                 self.failed.emit(str(exc))
             finally:
@@ -129,7 +160,7 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
         def __init__(self):
             super().__init__()
             self.setWindowTitle(f"IntelliGest — {engine.contract.profile}")
-            self.setMinimumSize(1024, 620)
+            self.setMinimumSize(1080, 640)
             self.worker = None
             self.last_frame = None
             self.candidate = None
@@ -141,11 +172,21 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
             self.video.setMinimumSize(640, 480)
             self.heading = QLabel("Sin predicción")
             self.heading.setStyleSheet("font-size: 22px; font-weight: 600")
-            self.fps = QLabel("0 FPS")
+
+            self.decision_label = QLabel("Decisión: -")
+            self.decision_label.setStyleSheet("font-size: 16px; font-weight: 700; color: #94a3b8;")
+
+            self.infer_label = QLabel("Inferencia: - ms")
+            self.fps = QLabel("0.0 FPS")
+
             self.bars = {}
             panel = QVBoxLayout()
             panel.addWidget(self.heading)
+            panel.addWidget(self.decision_label)
+            panel.addWidget(self.infer_label)
             panel.addWidget(self.fps)
+            panel.addSpacing(8)
+
             for class_name in engine.contract.classes:
                 label = QLabel(class_name)
                 bar = QProgressBar()
@@ -154,21 +195,39 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
                 panel.addWidget(label)
                 panel.addWidget(bar)
                 self.bars[class_name] = bar
-            self.threshold = QSlider(Qt.Orientation.Horizontal)
-            self.threshold.setRange(0, 100)
-            self.threshold.setValue(round(actions.minimum_confidence * 100))
-            panel.addWidget(QLabel("Umbral de confianza"))
-            panel.addWidget(self.threshold)
+
+            thresh_val = default_threshold if default_threshold is not None else actions.minimum_confidence
+            thresh_row = QHBoxLayout()
+            thresh_row.addWidget(QLabel("Umbral de confianza:"))
+            self.threshold_spin = QDoubleSpinBox()
+            self.threshold_spin.setRange(0.0, 1.0)
+            self.threshold_spin.setSingleStep(0.01)
+            self.threshold_spin.setValue(float(thresh_val))
+            thresh_row.addWidget(self.threshold_spin)
+            panel.addLayout(thresh_row)
+
+            cam_row = QHBoxLayout()
+            cam_row.addWidget(QLabel("Índice de Cámara:"))
+            self.camera_spin = QSpinBox()
+            self.camera_spin.setRange(0, 20)
+            init_cam = int(source) if source.isdigit() else 0
+            self.camera_spin.setValue(init_cam)
+            cam_row.addWidget(self.camera_spin)
+            panel.addLayout(cam_row)
+
+            button_row = QHBoxLayout()
             start = QPushButton("Iniciar")
             stop = QPushButton("Detener")
             snapshot = QPushButton("Capturar frame")
             start.clicked.connect(self.start)
             stop.clicked.connect(self.stop)
             snapshot.clicked.connect(self.snapshot)
-            panel.addWidget(start)
-            panel.addWidget(stop)
-            panel.addWidget(snapshot)
+            button_row.addWidget(start)
+            button_row.addWidget(stop)
+            button_row.addWidget(snapshot)
+            panel.addLayout(button_row)
             panel.addStretch()
+
             layout = QHBoxLayout(self)
             layout.addWidget(self.video, 3)
             right = QWidget()
@@ -179,7 +238,8 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
         def start(self):
             if self.worker and self.worker.isRunning():
                 return
-            self.worker = CaptureWorker()
+            src_val = str(self.camera_spin.value()) if source.isdigit() else source
+            self.worker = CaptureWorker(src_val)
             self.worker.frame_ready.connect(self.update_frame)
             self.worker.prediction_ready.connect(self.update_prediction)
             self.worker.failed.connect(self.error)
@@ -210,10 +270,20 @@ def _run_gui(engine: ONNXEngine, actions: UDPActionConfig, source: str, enable_u
                 )
             )
 
-        def update_prediction(self, prediction, fps):
-            threshold = self.threshold.value() / 100.0
+        def update_prediction(self, prediction, fps_val):
+            threshold = float(self.threshold_spin.value())
             self.heading.setText(f"{prediction.class_name} — {prediction.confidence:.1%}")
-            self.fps.setText(f"{fps:.1f} FPS")
+            self.infer_label.setText(f"Inferencia: {prediction.infer_ms:.2f} ms")
+            self.fps.setText(f"{fps_val:.1f} FPS")
+
+            decision_ok = prediction.confidence >= threshold
+            decision_text = "ACEPTADO" if decision_ok else "INCIERTO"
+            decision_color = "#22c55e" if decision_ok else "#f59e0b"
+            self.decision_label.setText(f"Decisión: {decision_text}")
+            self.decision_label.setStyleSheet(
+                f"font-size: 16px; font-weight: 700; color: {decision_color};"
+            )
+
             for name, probability in zip(engine.contract.classes, prediction.probabilities, strict=True):
                 self.bars[name].setValue(round(probability * 1000))
             now = time.monotonic()
@@ -263,9 +333,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     engine = ONNXEngine(contract, args.provider, args.model)
+    if args.eval:
+        return _run_eval(engine, args.test_dir)
     if args.headless:
         return _headless(engine, args.source)
-    return _run_gui(engine, actions, args.source, not args.no_udp)
+    return _run_gui(engine, actions, args.source, not args.no_udp, args.threshold)
 
 
 if __name__ == "__main__":

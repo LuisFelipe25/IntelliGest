@@ -91,9 +91,25 @@ El sistema utiliza el perfil canónico **`arm_poses_7`** definido en [`configs/d
 
 | Perfil | N° Clases | Clases de Gestos Soportadas | Estado |
 |---|---:|---|---|
-| **`arm_poses_7`** | **7** | `arms_crossed`, `arms_side`, `arms_up`, `left_arm_side`, `left_arm_up`, `right_arm_side`, `right_arm_up` | **Canónico (Único)** |
+| **`arm_poses_7`** | **7** | `arms_crossed`, `arms_side`, `arms_up`, `left_arm_side`, `left_arm_up`, `right_arm_side`, `right_arm_up` | **Canónico** |
 
 ---
+
+## 📈 Inspección y Evaluación Offline de Modelos ONNX
+
+### Inspección de Metadatos ONNX
+```bash
+intelligest inspect-onnx --model ruta/a/modelo.onnx --expected-classes 7
+```
+
+### Evaluación Offline y Matriz de Confusión Gráfica
+```bash
+# Evaluación con el perfil arm_poses_7
+intelligest evaluate-onnx --profile arm_poses_7 --eval-out reports/generated/confusion_matrix.png
+
+# O desde intelligest-desktop:
+intelligest-desktop --contract configs/models/arm_poses_7_app.json --eval
+```
 
 ## 🏋️ Entrenamiento y Exportación a ONNX
 
